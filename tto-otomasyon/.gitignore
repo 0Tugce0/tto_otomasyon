@@ -1,0 +1,102 @@
+# ===========================================================================
+# TTO Otomasyonu — .gitignore
+# ===========================================================================
+
+# ---------------------------------------------------------------------------
+# Python / Backend
+# ---------------------------------------------------------------------------
+
+# Sanal ortam
+venv/
+.venv/
+
+# Derlenmiş Python dosyaları
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pdb
+
+# Dağıtım / build
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# ---------------------------------------------------------------------------
+# Veritabanı — SQLite + WAL modu yan dosyaları
+# WAL modu aktif olduğunda SQLite 3 dosya üretir: .db, .db-wal, .db-shm
+# ---------------------------------------------------------------------------
+backend/data/tto.db
+backend/data/tto.db-wal
+backend/data/tto.db-shm
+
+# Kaynak Excel dosyaları — gerçek isim/IBAN/firma verisi içeriyor
+# KESİNLİKLE git'e eklenmemeli
+backend/data/source/
+*.xlsx
+
+# ---------------------------------------------------------------------------
+# Ortam / Konfigürasyon — gizli değerler (SECRET_KEY vb.)
+# ---------------------------------------------------------------------------
+.env
+.env.local
+.env.*.local
+
+# ---------------------------------------------------------------------------
+# Frontend / Node.js
+# ---------------------------------------------------------------------------
+
+# npm bağımlılıkları (npm install ile yeniden oluşturulur)
+node_modules/
+
+# Olası Vite dist çıktısı
+# (asıl build outDir zaten backend/app/static/'e gidiyor — vite.config.js)
+frontend/dist/
+
+# Production build çıktısı — npm run build ile her zaman yeniden üretilir.
+# Klasörün kendisi git'te .gitkeep ile korunur; içeriği ignore edilir.
+backend/app/static/*
+!backend/app/static/.gitkeep
+
+# ---------------------------------------------------------------------------
+# İşletim Sistemi
+# ---------------------------------------------------------------------------
+
+# macOS (geliştirme ortamı)
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Icon?
+
+# Windows (üretim sunucu ortamı)
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# ---------------------------------------------------------------------------
+# Editör / IDE
+# ---------------------------------------------------------------------------
+
+# VS Code — kişisel workspace ayarları commitlenmesin.
+# Paylaşılması istenen dosyalar (örn. extensions.json) aşağıdaki gibi
+# whitelist'lenir:
+.vscode/
+!.vscode/extensions.json
+
+# JetBrains (PyCharm, WebStorm vb.)
+.idea/
+*.iml
+
+# ---------------------------------------------------------------------------
+# Log ve geçici dosyalar
+# ---------------------------------------------------------------------------
+*.log
+*.tmp
+*.swp
+*.swo
+.coverage
+htmlcov/

@@ -1,0 +1,48 @@
+# TTO Otomasyonu — Backend bağımlılıkları
+# Tüm sürümler == ile sabitlenmiştir (pip freeze çıktısından üretilmiştir).
+# Ortam yeniden oluşturmak için:
+#   python3.12 -m venv venv
+#   venv/bin/pip install -r requirements.txt
+
+# --- Ana bağımlılıklar ---
+fastapi==0.141.1
+uvicorn==0.53.0          # ASGI sunucu (standart extras dahil)
+uvloop==0.22.1           # uvicorn[standard] — yüksek performanslı event loop
+httptools==0.8.0         # uvicorn[standard] — HTTP ayrıştırıcı
+websockets==17.1         # uvicorn[standard]
+watchfiles==1.2.0        # uvicorn[standard] — --reload için
+python-dotenv==1.2.3     # uvicorn[standard] — .env desteği
+
+SQLAlchemy==2.0.54       # ORM
+alembic==1.20.0          # DB migration
+
+# Şifre hashing: passlib kullanılmıyor (bcrypt>=4.1 uyumsuzluğu nedeniyle).
+# auth.py'de bcrypt.hashpw / bcrypt.checkpw doğrudan çağrılacak.
+bcrypt==5.0.0
+
+itsdangerous==2.2.0      # Starlette SessionMiddleware için imzalı cookie
+
+pydantic==2.13.5         # FastAPI veri doğrulama
+pydantic-settings==2.15.0  # Konfigürasyon yönetimi (core/config.py)
+python-multipart==0.0.32 # Form verisi (login endpoint için)
+
+# --- Pydantic[email] extras ---
+email-validator==2.3.0
+dnspython==2.8.0
+idna==3.20
+
+# --- Geçişli bağımlılıklar (pip freeze'den sabitlendi) ---
+Mako==1.4.1
+MarkupSafe==3.0.3
+annotated-doc==0.0.5
+annotated-types==0.8.0
+anyio==4.15.1
+click==8.5.0
+h11==0.16.0
+pydantic_core==2.46.5
+starlette==1.6.0
+typing-inspection==0.4.4
+typing_extensions==4.16.0
+PyYAML==6.0.3
+openpyxl==3.1.5
+et-xmlfile==2.0.0

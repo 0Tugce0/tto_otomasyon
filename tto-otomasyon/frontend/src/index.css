@@ -1,0 +1,10 @@
+/*
+ * index.css — Global stil dosyası
+ *
+ * Tailwind CSS v4: @import "tailwindcss" ile tüm utility class'lar aktif.
+ * v3'ten farkı: @tailwind base/components/utilities YOK,
+ * tailwind.config.js YOK — @tailwindcss/vite plugin otomatik halleder.
+ *
+ * Özel tema değişkenleri ileride @theme bloğu ile buraya eklenebilir.
+ */
+@import "tailwindcss";
