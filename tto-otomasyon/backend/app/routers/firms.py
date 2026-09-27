@@ -1,53 +1,93 @@
 """
-routers/firms.py — Firma CRUD iskelet endpoint'leri.
+routers/firms.py — Firma CRUD.
 
-Tüm endpoint'ler Depends(get_current_user) ile korunuyor.
-CRUD mantığı adım 8 sonrası doldurulacak (şimdiki aşama: iskelet).
+Şartname madde 7.5. DELETE endpoint yok (şartnamede geçmiyor; RESTRICT FK var).
 """
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.auth import get_current_user
 from app.database import get_db
-from app.models import User
+from app.models import Firm, User
+from app.schemas import FirmCreate, FirmResponse, FirmUpdate
 
 router = APIRouter()
 
 
-@router.get("/", summary="Firma listesi")
+@router.get("/", response_model=list[FirmResponse], summary="Firma listesi")
 def list_firms(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Tüm firmaları listeler. TODO: CRUD implementasyonu."""
-    return []  # Placeholder
+    """Tüm firmaları isme göre sıralı döner."""
+    return db.query(Firm).order_by(Firm.name).all()
 
 
-@router.post("/", summary="Yeni firma ekle", status_code=201)
+@router.post(
+    "/",
+    response_model=FirmResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Yeni firma ekle",
+)
 def create_firm(
+    body: FirmCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Yeni firma oluşturur. TODO: CRUD implementasyonu."""
-    return {}  # Placeholder
+    """Yeni firma oluşturur."""
+    from datetime import datetime, timezone
+    firm = Firm(name=body.name.strip(), created_at=datetime.now(timezone.utc))
+    db.add(firm)
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"'{body.name}' adında firma zaten mevcut.",
+        )
+    db.refresh(firm)
+    return firm
 
 
-@router.get("/{firm_id}", summary="Firma detayı")
+@router.get("/{firm_id}", response_model=FirmResponse, summary="Firma bilgisi")
 def get_firm(
     firm_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Firma detayını döner. TODO: CRUD implementasyonu."""
-    return {}  # Placeholder
+    firm = db.query(Firm).filter(Firm.id == firm_id).first()
+    if not firm:
+        raise HTTPException(status_code=404, detail="Firma bulunamadı.")
+    return firm
 
 
-@router.put("/{firm_id}", summary="Firma güncelle")
+@router.put("/{firm_id}", response_model=FirmResponse, summary="Firma güncelle")
 def update_firm(
     firm_id: int,
+    body: FirmUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Firmayı günceller. TODO: CRUD implementasyonu."""
-    return {}  # Placeholder
+    """Firma adını günceller (kısmi güncelleme)."""
+    firm = db.query(Firm).filter(Firm.id == firm_id).first()
+    if not firm:
+        raise HTTPException(status_code=404, detail="Firma bulunamadı.")
+
+    for field, value in body.model_dump(exclude_unset=True).items():
+        if isinstance(value, str):
+            value = value.strip()
+        setattr(firm, field, value)
+
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Bu isimde bir firma zaten mevcut.",
+        )
+    db.refresh(firm)
+    return firm

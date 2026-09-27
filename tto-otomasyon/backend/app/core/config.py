@@ -23,6 +23,10 @@ class Settings(BaseSettings):
     # dolayısıyla production'da CORS gerekmez.
     CORS_ORIGINS: list[str] = ["http://localhost:5173"]
 
+    # Session süresi — saat cinsinden (varsayılan: 8 saat = 1 iş günü).
+    # .env'de SESSION_MAX_AGE_HOURS=24 gibi override edilebilir.
+    SESSION_MAX_AGE_HOURS: int = 8
+
     model_config = SettingsConfigDict(
         env_file=".env",          # backend/ dizinindeki .env dosyası
         env_file_encoding="utf-8",

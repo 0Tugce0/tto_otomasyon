@@ -74,6 +74,7 @@ app.add_middleware(
     session_cookie="tto_session",
     https_only=False,   # LAN'da HTTP kullanılıyor (şartname madde 2)
     same_site="lax",
+    max_age=settings.SESSION_MAX_AGE_HOURS * 3600,  # saniye (varsayılan: 8 saat)
 )
 
 # 2. CORS — SADECE development modunda (DEBUG=True).

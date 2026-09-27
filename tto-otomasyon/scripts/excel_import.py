@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import sys
 import re
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from pathlib import Path
 from typing import Optional
@@ -151,7 +151,7 @@ def get_or_create_firm(db: Session, name: str, cache: dict) -> int:
     if existing:
         cache[name] = existing.id
         return existing.id
-    firm = Firm(name=name, created_at=datetime.utcnow())
+    firm = Firm(name=name, created_at=datetime.now(timezone.utc))
     db.add(firm)
     db.flush()
     cache[name] = firm.id
@@ -171,7 +171,7 @@ def get_or_create_academician(
             db.flush()
         cache[name] = existing.id
         return existing.id
-    acad = Academician(full_name=name, iban=iban, created_at=datetime.utcnow())
+    acad = Academician(full_name=name, iban=iban, created_at=datetime.now(timezone.utc))
     db.add(acad)
     db.flush()
     cache[name] = acad.id
@@ -186,7 +186,7 @@ def get_or_create_project(db: Session, name: str, cache: dict) -> int:
     if existing:
         cache[name] = existing.id
         return existing.id
-    proj = Project(name=name, created_at=datetime.utcnow())
+    proj = Project(name=name, created_at=datetime.now(timezone.utc))
     db.add(proj)
     db.flush()
     cache[name] = proj.id
@@ -580,8 +580,8 @@ def insert_all(db: Session, records: list[dict]) -> dict:
             iban_snapshot=rec.get("iban"),
             notes=rec.get("notes"),
             is_manually_adjusted=rec.get("is_manually_adjusted", False),
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
         )
         db.add(wr)
         inserted += 1

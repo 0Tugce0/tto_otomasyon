@@ -103,6 +103,29 @@ class ProjectResponse(BaseModel):
 # 4. WORK RECORDS — Ana iş/ödeme kayıtları (şartname 5.4)
 # ===========================================================================
 
+# ---------------------------------------------------------------------------
+# Hesaplama önizlemesi — DB'ye yazmadan sadece hesaplama sonucunu döner
+# ---------------------------------------------------------------------------
+
+class PreviewCalculationRequest(BaseModel):
+    """POST /api/records/preview-calculation — DB'ye yazmadan hesaplama önizlemesi."""
+    year: int = Field(..., ge=2020, description="Kayıt yılı — settings tablosundan oran bulunur")
+    invoice_price: MoneyAmount = Field(..., description="Fatura fiyatı")
+
+
+class PreviewCalculationResponse(BaseModel):
+    """Hesaplama zinciri sonuçları (5 adım)."""
+    year: int
+    invoice_price: MoneyAmount
+    invoice_vat: MoneyAmount
+    withholding_tax: MoneyAmount
+    tto_share_amount: MoneyAmount
+    amount_after_tto_share: MoneyAmount
+    amount_after_withholding: MoneyAmount
+    # Kullanılan oranlar (frontend'de bilgi amaçlı gösterilebilir)
+    rates_used: dict
+
+
 class WorkRecordCreate(BaseModel):
     """
     Yeni kayıt oluşturma.

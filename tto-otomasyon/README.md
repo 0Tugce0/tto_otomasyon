@@ -184,7 +184,11 @@ tto-otomasyon/
 
 ## 5. Windows — Üretim Sunucu Kurulumu
 
-> Detaylı talimatlar için bkz: [`docs/windows_server_setup.md`](docs/windows_server_setup.md) (adım 15'te oluşturulacak).
+> 📖 **Detaylı adım adım rehber:** [`docs/WINDOWS_DEPLOYMENT.md`](docs/WINDOWS_DEPLOYMENT.md)
+>
+> Ön koşullar, NSSM servis kaydı, güvenlik duvarı kuralı, güncelleme senaryosu
+> ve sorun giderme dahil kapsamlı kurulum talimatları için yukarıdaki dosyaya bakın.
+> Aşağıda yalnızca özet verilmektedir.
 
 ### 5.1 Gereksinimler (Windows)
 
@@ -309,20 +313,20 @@ DEBUG=false
 ## 8. Bilinen Sınırlamalar / Henüz Yapılmayanlar
 
 Aşağıdaki özellikler planlanmış ancak henüz uygulanmamıştır.
-Her biri ilgili adımda tamamlanacak.
 
 | Özellik | Durum | Adım |
 |---|---|---|
-| **UI sayfaları** | ⏳ Placeholder — "Yapım aşamasında" gösteriyor | Adım 14 |
-| **Backend CRUD endpoint'leri** | ⏳ İskelet — `return []` döndürüyor | Adım 14 |
-| **Hesaplama motoru (CRUD bağlantısı)** | ⏳ `calculations.py` standalone test edildi, router'lara bağlanmadı | Adım 14 |
-| **Excel import script'i** | ⏳ Henüz yazılmadı (`scripts/excel_import.py`) | Adım 13 |
+| **UI sayfaları + CRUD endpoint'leri** | ✅ Tamamlandı (Adım 14.1–14.4) | Adım 14 |
+| **Hesaplama motoru (CRUD bağlantısı)** | ✅ `calculations.py` + `preview-calculation` endpoint bağlandı | Adım 14 |
+| **Excel import script'i** | ✅ Tamamlandı, 83 kayıt aktarıldı | Adım 13 |
 | **Windows servis (NSSM) kurulumu** | ⏳ Sadece planlandı ve dokümante edildi | Adım 15 |
 | **Otomatik yedekleme script'i** | ⏳ Henüz yazılmadı | Adım 15 |
 
 > **Not:** Hesaplama formülleri (KDV, tevkifat, TTO payı, stopaj) gerçek Excel
-> dosyasındaki formüllerden doğrulanmıştır (bkz. [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)),
-> ancak henüz records router'ına bağlanmamıştır.
+> dosyasındaki formüllerden doğrulanmıştır (bkz. [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md))
+> ve `POST /api/records/preview-calculation` endpoint'i aracılığıyla kayıt oluşturma/düzenleme
+> formlarına entegre edilmiştir.
+
 
 ---
 
