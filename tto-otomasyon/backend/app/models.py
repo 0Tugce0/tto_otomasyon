@@ -18,6 +18,8 @@ Onaylanan kararlar:
   - academician_id FK → RESTRICT (NOT NULL, MVP'de silme yok)
   - project_id FK → SET NULL (nullable, opsiyonel bağ)
   - PRAGMA foreign_keys=ON: database.py'deki event hook ile etkin
+  - firms.name / academicians.full_name: COLLATE NOCASE — case-insensitive
+    UNIQUE (örn. "Aydos" == "AYDOS"). Bkz. migration 9802634c51c7.
 """
 
 from datetime import datetime, date
@@ -48,7 +50,7 @@ class Firm(Base):
     __tablename__ = "firms"
 
     id         = Column(Integer, primary_key=True, index=True)
-    name       = Column(String, nullable=False, unique=True)   # Firma adı, tekil
+    name       = Column(String(collation="NOCASE"), nullable=False, unique=True)   # Firma adı, tekil (case-insensitive)
     created_at = Column(DateTime, nullable=False, default=func.now())
 
     # İlişki
@@ -62,7 +64,7 @@ class Academician(Base):
     __tablename__ = "academicians"
 
     id          = Column(Integer, primary_key=True, index=True)
-    full_name   = Column(String, nullable=False, unique=True)   # Ad soyad, tekil
+    full_name   = Column(String(collation="NOCASE"), nullable=False, unique=True)   # Ad soyad, tekil (case-insensitive)
     iban        = Column(String, nullable=True)                  # 2026'dan itibaren
     department  = Column(String, nullable=True)                  # İleride eklenebilir
     created_at  = Column(DateTime, nullable=False, default=func.now())

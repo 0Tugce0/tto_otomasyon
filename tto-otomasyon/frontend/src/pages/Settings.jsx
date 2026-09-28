@@ -70,32 +70,32 @@ export default function Settings({ showToast }) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 text-gray-100 p-4 sm:p-6">
+    <div className="min-h-screen bg-custom-bg text-custom-text p-4 sm:p-6">
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <Link to="/" className="text-gray-500 hover:text-gray-300 text-sm transition-colors">← Kayıtlar</Link>
-            <h1 className="text-xl sm:text-2xl font-bold text-white mt-2">Hesaplama Oranları</h1>
-            <p className="text-gray-400 text-sm mt-0.5">Yıl bazlı TTO payı, stopaj, KDV ve fatura tevkifat oranları</p>
+            <Link to="/" className="text-custom-primary/70 hover:text-custom-text text-sm transition-colors">← Kayıtlar</Link>
+            <h1 className="text-xl sm:text-2xl font-bold text-custom-text mt-2">Hesaplama Oranları</h1>
+            <p className="text-custom-primary text-sm mt-0.5">Yıl bazlı TTO payı, stopaj, KDV ve fatura tevkifat oranları</p>
           </div>
         </div>
 
         {/* Mevcut oranlar */}
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden mb-6">
-          <div className="px-4 sm:px-6 py-4 border-b border-gray-800">
-            <h2 className="text-base font-semibold text-white">Mevcut Oranlar</h2>
+        <div className="bg-white border border-custom-primary/15 rounded-2xl overflow-hidden mb-6">
+          <div className="px-4 sm:px-6 py-4 border-b border-custom-primary/15">
+            <h2 className="text-base font-semibold text-custom-text">Mevcut Oranlar</h2>
           </div>
           {loading ? (
             <div className="p-8 text-center">
-              <div className="w-6 h-6 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto" />
+              <div className="w-6 h-6 border-4 border-custom-primary border-t-transparent rounded-full animate-spin mx-auto" />
             </div>
           ) : settings.length === 0 ? (
-            <div className="p-8 text-center text-gray-500">Henüz oran girilmemiş.</div>
+            <div className="p-8 text-center text-custom-primary/70">Henüz oran girilmemiş.</div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-gray-800 text-gray-400 text-xs uppercase tracking-wider">
+                  <tr className="border-b border-custom-primary/15 text-custom-primary text-xs uppercase tracking-wider">
                     <th className="px-4 sm:px-6 py-3 text-left">Yıl</th>
                     <th className="px-4 sm:px-6 py-3 text-right">TTO Payı</th>
                     <th className="px-4 sm:px-6 py-3 text-right">Stopaj</th>
@@ -106,15 +106,15 @@ export default function Settings({ showToast }) {
                 </thead>
                 <tbody>
                   {settings.map(s => (
-                    <tr key={s.id} className={`border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors ${editId === s.id ? "bg-indigo-950/30" : ""}`}>
-                      <td className="px-4 sm:px-6 py-4 font-semibold text-indigo-400">{s.valid_year}</td>
-                      <td className="px-4 sm:px-6 py-4 text-right text-green-400">{pct(s.tto_share_rate)}</td>
+                    <tr key={s.id} className={`border-b border-custom-primary/10 hover:bg-custom-primary/5 transition-colors ${editId === s.id ? "bg-custom-primary/10" : ""}`}>
+                      <td className="px-4 sm:px-6 py-4 font-semibold text-custom-accent">{s.valid_year}</td>
+                      <td className="px-4 sm:px-6 py-4 text-right text-custom-primary">{pct(s.tto_share_rate)}</td>
                       <td className="px-4 sm:px-6 py-4 text-right">{pct(s.withholding_rate)}</td>
                       <td className="px-4 sm:px-6 py-4 text-right hidden sm:table-cell">{pct(s.vat_rate)}</td>
                       <td className="px-4 sm:px-6 py-4 text-right hidden sm:table-cell">{pct(s.invoice_withholding_rate)}</td>
                       <td className="px-4 sm:px-6 py-4 text-center">
                         <button onClick={() => startEdit(s)}
-                          className="text-xs px-3 py-1.5 rounded-lg bg-gray-700 hover:bg-gray-600 transition-colors text-gray-300">
+                          className="text-xs px-3 py-1.5 rounded-lg bg-custom-primary/10 hover:bg-custom-primary/20 transition-colors text-custom-text">
                           Düzenle
                         </button>
                       </td>
@@ -127,13 +127,13 @@ export default function Settings({ showToast }) {
         </div>
 
         {/* Form */}
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4 sm:p-6">
+        <div className="bg-white border border-custom-primary/15 rounded-2xl p-4 sm:p-6">
           <div className="flex items-center justify-between mb-5">
-            <h2 className="text-base font-semibold text-white">
+            <h2 className="text-base font-semibold text-custom-text">
               {editId ? `${form.valid_year} Yılı Düzenle` : "Yeni Yıl Ekle"}
             </h2>
             {editId && (
-              <button onClick={startNew} className="text-xs text-gray-400 hover:text-white transition-colors">
+              <button onClick={startNew} className="text-xs text-custom-primary hover:text-custom-text transition-colors">
                 ✕ İptal
               </button>
             )}
@@ -148,21 +148,21 @@ export default function Settings({ showToast }) {
               { key: "invoice_withholding_rate",  label: "Fatura Tevkifat (0.10 = %10)", placeholder: "0.10" },
             ].map(({ key, label, type, placeholder }) => (
               <div key={key}>
-                <label className="block text-xs font-medium text-gray-400 mb-1.5">{label}</label>
+                <label className="block text-xs font-medium text-custom-primary mb-1.5">{label}</label>
                 <input
                   id={`settings-${key}`}
                   type={type || "text"} required
                   disabled={editId && key === "valid_year"}
                   value={form[key]}
                   onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
-                  className="w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm placeholder-gray-600 focus:outline-none focus:border-indigo-500 disabled:opacity-50 transition-colors"
+                  className="w-full px-3 py-2.5 bg-custom-primary/5 border border-custom-primary/25 rounded-xl text-custom-text text-sm placeholder-custom-primary/40 focus:outline-none focus:border-custom-primary disabled:opacity-50 transition-colors"
                   placeholder={placeholder}
                 />
               </div>
             ))}
             <div className="sm:col-span-2 flex justify-end pt-2">
               <button id="settings-save-btn" type="submit" disabled={saving}
-                className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-all flex items-center gap-2">
+                className="px-6 py-2.5 bg-custom-primary hover:bg-custom-accent disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-all flex items-center gap-2">
                 {saving && <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />}
                 {saving ? "Kaydediliyor…" : editId ? "Güncelle" : "Ekle"}
               </button>

@@ -5,9 +5,18 @@
  * v3'ten farkı: @tailwind base/components/utilities YOK,
  * tailwind.config.js YOK — @tailwindcss/vite plugin otomatik halleder.
  *
- * Özel tema değişkenleri ileride @theme bloğu ile buraya eklenebilir.
+ * Marka renkleri @theme bloğunda tanımlı — bg-custom-*, text-custom-*,
+ * border-custom-* vb. utility class'lar buradan otomatik üretilir.
  */
 @import "tailwindcss";
+
+@theme {
+  --color-custom-text: #0d0e14;
+  --color-custom-bg: #f9f9fb;
+  --color-custom-primary: #69719c;
+  --color-custom-secondary: #caafc8;
+  --color-custom-accent: #af869c;
+}
 
 /* ── Toast animasyonu ── */
 @keyframes fadeIn {
@@ -20,6 +29,6 @@
 
 /* ── Scrollbar (WebKit) ── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: #111827; }
-::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #4b5563; }
+::-webkit-scrollbar-track { background: var(--color-custom-bg); }
+::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--color-custom-primary) 45%, transparent); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--color-custom-primary) 65%, transparent); }

@@ -6,8 +6,9 @@ POST /preview-calculation    — DB'ye yazmadan hesaplama önizlemesi
 POST /                       — yeni kayıt (sira_no otomatik — B-5)
 GET  /{id}                   — tek kayıt detayı
 PUT  /{id}                   — güncelleme (is_manually_adjusted + hesaplama)
+DELETE /{id}                 — kaydı kalıcı olarak siler (hard delete, geri alınamaz)
 
-Şartname 7.2 / 7.3. DELETE endpoint yok.
+Şartname 7.2 / 7.3.
 """
 
 from typing import Optional
@@ -261,4 +262,21 @@ def update_record(
     db.commit()
     db.refresh(wr)
     return _enrich(wr, db)
+
+
+# ---------------------------------------------------------------------------
+# DELETE /{id} — Kalıcı silme (hard delete, geri alınamaz)
+# ---------------------------------------------------------------------------
+@router.delete("/{record_id}", status_code=status.HTTP_204_NO_CONTENT, summary="İş kaydını kalıcı olarak sil")
+def delete_record(
+    record_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    wr = db.query(WorkRecord).filter(WorkRecord.id == record_id).first()
+    if not wr:
+        raise HTTPException(status_code=404, detail="Kayıt bulunamadı.")
+
+    db.delete(wr)
+    db.commit()
 

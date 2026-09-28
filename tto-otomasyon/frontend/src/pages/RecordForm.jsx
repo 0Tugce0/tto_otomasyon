@@ -6,6 +6,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { apiFetch, ApiError } from "../lib/api";
+import SearchableCreatableSelect from "../components/SearchableCreatableSelect";
 
 const CALC_FIELDS = [
   { key: "invoice_vat",             label: "Fatura KDV" },
@@ -112,6 +113,30 @@ export default function RecordForm({ showToast }) {
     }
   }, [form.invoice_price, form.year, form.is_manually_adjusted]);
 
+  // "Aranabilir + yeni ekle" bileşenleri için oluşturma yardımcıları.
+  // Her biri yeni kaydı API'ye POST eder, dropdown state'ine ekler
+  // (sayfa yenilenmeden) ve bileşenin bekledigi {id, label} şeklinde döner.
+  async function createFirm(name) {
+    const created = await apiFetch("/api/firms/", { method: "POST", body: JSON.stringify({ name }) });
+    setFirms(f => [...f, created]);
+    return { id: created.id, label: created.name };
+  }
+
+  async function createAcademician(name) {
+    const created = await apiFetch("/api/academicians/", {
+      method: "POST",
+      body: JSON.stringify({ full_name: name }),
+    });
+    setAcademicians(a => [...a, created]);
+    return { id: created.id, label: created.full_name };
+  }
+
+  async function createProject(name) {
+    const created = await apiFetch("/api/projects/", { method: "POST", body: JSON.stringify({ name }) });
+    setProjects(p => [...p, created]);
+    return { id: created.id, label: created.name };
+  }
+
   function handleCalcFieldChange(field, value) {
     setForm(f => ({ ...f, [field]: value, is_manually_adjusted: true }));
   }
@@ -127,6 +152,10 @@ export default function RecordForm({ showToast }) {
   async function handleSubmit(e) {
     e.preventDefault();
     if (saving) return;
+    if (!form.firm_id || !form.academician_id) {
+      showToast?.("Lütfen firma ve akademisyen seçin.", "error");
+      return;
+    }
     setSaving(true);
     const body = {
       year: parseInt(form.year),
@@ -160,114 +189,115 @@ export default function RecordForm({ showToast }) {
   }
 
   if (pageLoading) return (
-    <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-      <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+    <div className="min-h-screen bg-custom-bg flex items-center justify-center">
+      <div className="w-8 h-8 border-4 border-custom-primary border-t-transparent rounded-full animate-spin" />
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-gray-950 text-gray-100 p-4 sm:p-6">
+    <div className="min-h-screen bg-custom-bg text-custom-text p-4 sm:p-6">
       <div className="max-w-2xl mx-auto">
         <div className="mb-6">
-          <Link to="/" className="text-gray-500 hover:text-gray-300 text-sm transition-colors">← Kayıtlar</Link>
-          <h1 className="text-xl sm:text-2xl font-bold text-white mt-2">
+          <Link to="/" className="text-custom-primary/70 hover:text-custom-text text-sm transition-colors">← Kayıtlar</Link>
+          <h1 className="text-xl sm:text-2xl font-bold text-custom-text mt-2">
             {isEdit ? `Kayıt Düzenle #${id}` : "Yeni İş Kaydı"}
           </h1>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* Temel bilgiler */}
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4 sm:p-5 space-y-4">
-            <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Temel Bilgiler</h2>
+          <div className="bg-white border border-custom-primary/15 rounded-2xl p-4 sm:p-5 space-y-4">
+            <h2 className="text-xs font-semibold text-custom-primary uppercase tracking-wider">Temel Bilgiler</h2>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1.5">Yıl *</label>
+                <label className="block text-xs font-medium text-custom-primary mb-1.5">Yıl *</label>
                 <select id="form-year" required value={form.year}
                   onChange={e => setForm(f => ({ ...f, year: e.target.value }))}
-                  className="w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500">
+                  className="w-full px-3 py-2.5 bg-custom-primary/5 border border-custom-primary/25 rounded-xl text-custom-text text-sm focus:outline-none focus:border-custom-primary">
                   {[2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1.5">Ödeme Durumu *</label>
+                <label className="block text-xs font-medium text-custom-primary mb-1.5">Ödeme Durumu *</label>
                 <select id="form-payment-status" required value={form.payment_status}
                   onChange={e => setForm(f => ({ ...f, payment_status: e.target.value }))}
-                  className="w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500">
+                  className="w-full px-3 py-2.5 bg-custom-primary/5 border border-custom-primary/25 rounded-xl text-custom-text text-sm focus:outline-none focus:border-custom-primary">
                   <option value="Ödenmedi">Ödenmedi</option>
                   <option value="Ödendi">Ödendi</option>
                 </select>
               </div>
             </div>
 
-            <div>
-              <label className="block text-xs font-medium text-gray-400 mb-1.5">Firma *</label>
-              <select id="form-firm" required value={form.firm_id}
-                onChange={e => setForm(f => ({ ...f, firm_id: e.target.value }))}
-                className="w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500">
-                <option value="">— Firma seç —</option>
-                {firms.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
-              </select>
-            </div>
+            <SearchableCreatableSelect
+              id="form-firm"
+              label="Firma *"
+              items={firms.map(f => ({ id: f.id, label: f.name }))}
+              value={form.firm_id}
+              onChange={firm_id => setForm(f => ({ ...f, firm_id }))}
+              onCreate={createFirm}
+              placeholder="Firma ara veya yeni ekle…"
+            />
+
+            <SearchableCreatableSelect
+              id="form-academician"
+              label="Akademisyen *"
+              items={academicians.map(a => ({ id: a.id, label: a.full_name }))}
+              value={form.academician_id}
+              onChange={academician_id => setForm(f => ({ ...f, academician_id }))}
+              onCreate={createAcademician}
+              placeholder="Akademisyen ara veya yeni ekle…"
+            />
+
+            <SearchableCreatableSelect
+              id="form-project"
+              label="Proje"
+              items={projects.map(p => ({ id: p.id, label: p.name }))}
+              value={form.project_id}
+              onChange={project_id => setForm(f => ({ ...f, project_id }))}
+              onCreate={createProject}
+              placeholder="Proje ara veya yeni ekle (opsiyonel)…"
+              allowClear
+            />
 
             <div>
-              <label className="block text-xs font-medium text-gray-400 mb-1.5">Akademisyen *</label>
-              <select id="form-academician" required value={form.academician_id}
-                onChange={e => setForm(f => ({ ...f, academician_id: e.target.value }))}
-                className="w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500">
-                <option value="">— Akademisyen seç —</option>
-                {academicians.map(a => <option key={a.id} value={a.id}>{a.full_name}</option>)}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-gray-400 mb-1.5">Proje</label>
-              <select id="form-project" value={form.project_id}
-                onChange={e => setForm(f => ({ ...f, project_id: e.target.value }))}
-                className="w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500">
-                <option value="">— Proje yok —</option>
-                {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-gray-400 mb-1.5">Yapılan İş *</label>
+              <label className="block text-xs font-medium text-custom-primary mb-1.5">Yapılan İş *</label>
               <input id="form-work-done" type="text" required value={form.work_done}
                 onChange={e => setForm(f => ({ ...f, work_done: e.target.value }))}
-                className="w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500"
+                className="w-full px-3 py-2.5 bg-custom-primary/5 border border-custom-primary/25 rounded-xl text-custom-text text-sm focus:outline-none focus:border-custom-primary"
                 placeholder="Danışmanlık, Rapor vb." />
             </div>
           </div>
 
           {/* Parasal alanlar */}
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4 sm:p-5 space-y-4">
+          <div className="bg-white border border-custom-primary/15 rounded-2xl p-4 sm:p-5 space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Tutar Bilgileri</h2>
+              <h2 className="text-xs font-semibold text-custom-primary uppercase tracking-wider">Tutar Bilgileri</h2>
               {form.is_manually_adjusted && (
                 <button type="button" onClick={resetManual}
-                  className="text-xs text-yellow-400 hover:text-yellow-300 border border-yellow-800 px-2 py-1 rounded-lg transition-colors">
+                  className="text-xs text-yellow-600 hover:text-yellow-700 border border-yellow-300 px-2 py-1 rounded-lg transition-colors">
                   ✎ Elle — Otomatiğe dön
                 </button>
               )}
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-400 mb-1.5">Fatura Fiyatı (TL) *</label>
+              <label className="block text-xs font-medium text-custom-primary mb-1.5">Fatura Fiyatı (TL) *</label>
               <input id="form-invoice-price" type="number" step="0.01" required
                 value={form.invoice_price}
                 onChange={e => setForm(f => ({ ...f, invoice_price: e.target.value }))}
                 onBlur={fetchPreview}
-                className="w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500"
+                className="w-full px-3 py-2.5 bg-custom-primary/5 border border-custom-primary/25 rounded-xl text-custom-text text-sm focus:outline-none focus:border-custom-primary"
                 placeholder="10000" />
               {calcLoading && (
                 <div className="flex items-center gap-2 mt-1.5">
-                  <div className="w-3 h-3 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
-                  <p className="text-xs text-indigo-400">Hesaplanıyor…</p>
+                  <div className="w-3 h-3 border-2 border-custom-accent border-t-transparent rounded-full animate-spin" />
+                  <p className="text-xs text-custom-accent">Hesaplanıyor…</p>
                 </div>
               )}
-              {calcError && <p className="text-xs text-red-400 mt-1">{calcError}</p>}
+              {calcError && <p className="text-xs text-red-500 mt-1">{calcError}</p>}
               {!form.is_manually_adjusted && form.invoice_vat && !calcError && !calcLoading && (
-                <p className="text-xs text-green-500 mt-1">✓ Hesaplamalar otomatik alındı</p>
+                <p className="text-xs text-green-600 mt-1">✓ Hesaplamalar otomatik alındı</p>
               )}
             </div>
 
@@ -275,10 +305,10 @@ export default function RecordForm({ showToast }) {
               {CALC_FIELDS.map(({ key, label }) => (
                 <div key={key}>
                   <label className="block text-xs font-medium mb-1.5">
-                    <span className="text-gray-400">{label}</span>
+                    <span className="text-custom-primary">{label}</span>
                     {form.is_manually_adjusted
-                      ? <span className="ml-1.5 text-yellow-500 text-xs">✎ elle</span>
-                      : <span className="ml-1.5 text-indigo-400 text-xs">↻ otomatik</span>}
+                      ? <span className="ml-1.5 text-yellow-600 text-xs">✎ elle</span>
+                      : <span className="ml-1.5 text-custom-accent text-xs">↻ otomatik</span>}
                   </label>
                   <input
                     id={`form-${key}`}
@@ -287,8 +317,8 @@ export default function RecordForm({ showToast }) {
                     onChange={e => handleCalcFieldChange(key, e.target.value)}
                     className={`w-full px-3 py-2.5 border rounded-xl text-sm focus:outline-none transition-colors ${
                       form.is_manually_adjusted
-                        ? "bg-gray-800 border-yellow-700 text-white focus:border-yellow-500"
-                        : "bg-gray-800/40 border-gray-800 text-gray-400"
+                        ? "bg-yellow-50 border-yellow-300 text-custom-text focus:border-yellow-500"
+                        : "bg-custom-primary/5 border-custom-primary/10 text-custom-primary/60"
                     }`}
                     placeholder="0.00" />
                 </div>
@@ -297,38 +327,38 @@ export default function RecordForm({ showToast }) {
           </div>
 
           {/* Ödeme */}
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4 sm:p-5 space-y-4">
-            <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Ödeme Detayları</h2>
+          <div className="bg-white border border-custom-primary/15 rounded-2xl p-4 sm:p-5 space-y-4">
+            <h2 className="text-xs font-semibold text-custom-primary uppercase tracking-wider">Ödeme Detayları</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1.5">Ödeme Tarihi</label>
+                <label className="block text-xs font-medium text-custom-primary mb-1.5">Ödeme Tarihi</label>
                 <input id="form-paid-date" type="date" value={form.paid_date}
                   onChange={e => setForm(f => ({ ...f, paid_date: e.target.value }))}
-                  className="w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500" />
+                  className="w-full px-3 py-2.5 bg-custom-primary/5 border border-custom-primary/25 rounded-xl text-custom-text text-sm focus:outline-none focus:border-custom-primary" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1.5">IBAN (ödeme anındaki)</label>
+                <label className="block text-xs font-medium text-custom-primary mb-1.5">IBAN (ödeme anındaki)</label>
                 <input id="form-iban" type="text" value={form.iban_snapshot}
                   onChange={e => setForm(f => ({ ...f, iban_snapshot: e.target.value }))}
-                  className="w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm font-mono focus:outline-none focus:border-indigo-500"
+                  className="w-full px-3 py-2.5 bg-custom-primary/5 border border-custom-primary/25 rounded-xl text-custom-text text-sm font-mono focus:outline-none focus:border-custom-primary"
                   placeholder="TR00 …" />
               </div>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-400 mb-1.5">Notlar</label>
+              <label className="block text-xs font-medium text-custom-primary mb-1.5">Notlar</label>
               <textarea id="form-notes" rows={3} value={form.notes}
                 onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
-                className="w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500 resize-none"
+                className="w-full px-3 py-2.5 bg-custom-primary/5 border border-custom-primary/25 rounded-xl text-custom-text text-sm focus:outline-none focus:border-custom-primary resize-none"
                 placeholder="Opsiyonel…" />
             </div>
           </div>
 
           <div className="flex gap-3 justify-end">
-            <Link to="/" className="px-5 py-2.5 rounded-xl border border-gray-700 text-gray-300 text-sm hover:bg-gray-800 transition-colors">
+            <Link to="/" className="px-5 py-2.5 rounded-xl border border-custom-primary/25 text-custom-text text-sm hover:bg-custom-primary/5 transition-colors">
               İptal
             </Link>
             <button id="form-save-btn" type="submit" disabled={saving || calcLoading}
-              className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-xl transition-all flex items-center gap-2">
+              className="px-6 py-2.5 bg-custom-primary hover:bg-custom-accent disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-xl transition-all flex items-center gap-2">
               {saving && <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />}
               {saving ? "Kaydediliyor…" : isEdit ? "Güncelle" : "Kaydet"}
             </button>
