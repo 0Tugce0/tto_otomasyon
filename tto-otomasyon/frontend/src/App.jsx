@@ -23,7 +23,9 @@ import { useToast, ToastContainer } from "./components/Toast";
 import Login             from "./pages/Login";
 import RecordsList       from "./pages/RecordsList";
 import RecordForm        from "./pages/RecordForm";
+import AcademiciansList  from "./pages/AcademiciansList";
 import AcademicianDetail from "./pages/AcademicianDetail";
+import FirmsList         from "./pages/FirmsList";
 import FirmDetail        from "./pages/FirmDetail";
 import Settings          from "./pages/Settings";
 import ProtectedRoute    from "./components/ProtectedRoute";
@@ -62,8 +64,14 @@ export default function App() {
         <Route path="/records/:id/edit" element={
           <ProtectedRoute><RecordForm showToast={showToast} /></ProtectedRoute>
         } />
+        <Route path="/academicians" element={
+          <ProtectedRoute><AcademiciansList showToast={showToast} /></ProtectedRoute>
+        } />
         <Route path="/academicians/:id" element={
           <ProtectedRoute><AcademicianDetail showToast={showToast} /></ProtectedRoute>
+        } />
+        <Route path="/firms" element={
+          <ProtectedRoute><FirmsList showToast={showToast} /></ProtectedRoute>
         } />
         <Route path="/firms/:id" element={
           <ProtectedRoute><FirmDetail showToast={showToast} /></ProtectedRoute>

@@ -20,6 +20,12 @@ HESAPLAMA ZİNCİRİ (sırayla):
   3. tto_share_amount        = invoice_price * settings.tto_share_rate
   4. amount_after_tto_share  = invoice_price - tto_share_amount
   5. amount_after_withholding = amount_after_tto_share * (1 - settings.withholding_rate)
+
+  6. (opsiyonel) final_net_payable = amount_after_withholding - other_funds
+     "Diğer Fon & Harçlar" (Stitch tasarımı — modül 2, Yeni Kayıt formu) — 5 adımlık
+     doğrulanmış zincire dokunmadan eklenen, üstte ayrıca düşülen 6. bir kesinti.
+     other_funds gönderilmezse/0 ise final_net_payable == amount_after_withholding
+     (geçmiş/mevcut kayıtlarda davranış birebir korunur).
 """
 
 from decimal import ROUND_HALF_UP, Decimal
@@ -111,6 +117,7 @@ def calculate_all(
     withholding_rate: Decimal,
     vat_rate: Decimal,
     invoice_withholding_rate: Decimal,
+    other_funds: Decimal = Decimal("0"),
 ) -> dict[str, Decimal]:
     """
     Tüm hesaplama zincirini sırayla çalıştırır.
@@ -131,13 +138,16 @@ def calculate_all(
 
     Dönen anahtarlar (tüm Decimal):
         invoice_vat, withholding_tax, tto_share_amount,
-        amount_after_tto_share, amount_after_withholding
+        amount_after_tto_share, amount_after_withholding,
+        other_funds, final_net_payable
     """
     invoice_vat = calc_invoice_vat(invoice_price, vat_rate)
     withholding_tax = calc_withholding_tax(invoice_vat, invoice_withholding_rate)
     tto_share_amount = calc_tto_share_amount(invoice_price, tto_share_rate)
     amount_after_tto_share = calc_amount_after_tto_share(invoice_price, tto_share_amount)
     amount_after_withholding = calc_amount_after_withholding(amount_after_tto_share, withholding_rate)
+    other_funds = _round2(other_funds)
+    final_net_payable = _round2(amount_after_withholding - other_funds)
 
     return {
         "invoice_vat": invoice_vat,
@@ -145,4 +155,6 @@ def calculate_all(
         "tto_share_amount": tto_share_amount,
         "amount_after_tto_share": amount_after_tto_share,
         "amount_after_withholding": amount_after_withholding,
+        "other_funds": other_funds,
+        "final_net_payable": final_net_payable,
     }

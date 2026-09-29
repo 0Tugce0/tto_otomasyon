@@ -13,6 +13,8 @@
 
 import { useState, useRef, useEffect } from "react";
 
+const INSET = "shadow-[inset_3px_3px_6px_rgba(0,0,0,0.06),inset_-3px_-3px_6px_rgba(255,255,255,0.6)]";
+
 export default function SearchableCreatableSelect({
   id,
   label,
@@ -88,7 +90,7 @@ export default function SearchableCreatableSelect({
 
   return (
     <div ref={wrapRef} className="relative">
-      {label && <label className="block text-xs font-medium text-custom-primary mb-1.5">{label}</label>}
+      {label && <label className="block text-xs font-semibold text-on-surface mb-1.5">{label}</label>}
       <div className="relative">
         <input
           id={id}
@@ -103,14 +105,14 @@ export default function SearchableCreatableSelect({
           }}
           placeholder={placeholder}
           autoComplete="off"
-          className="w-full px-3 py-2.5 bg-custom-primary/5 border border-custom-primary/25 rounded-xl text-custom-text text-sm focus:outline-none focus:border-custom-primary disabled:opacity-50"
+          className={`w-full px-3.5 py-3 rounded-xl bg-surface text-xs font-medium text-on-surface placeholder:text-on-surface-variant/70 focus:outline-none disabled:opacity-50 ${INSET}`}
         />
         {allowClear && value && (
           <button
             type="button"
             onClick={handleClear}
             title="Temizle"
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-custom-primary/60 hover:text-custom-text text-xs px-1"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface text-xs px-1"
           >
             ✕
           </button>
@@ -118,17 +120,17 @@ export default function SearchableCreatableSelect({
       </div>
 
       {open && !disabled && (
-        <div className="absolute z-20 mt-1 w-full max-h-56 overflow-y-auto bg-white border border-custom-primary/20 rounded-xl shadow-xl">
+        <div className="absolute z-20 mt-2 w-full max-h-56 overflow-y-auto rounded-xl bg-surface p-2 shadow-[8px_8px_16px_rgba(0,0,0,0.08),-8px_-8px_16px_rgba(255,255,255,0.7)]">
           {filtered.length === 0 && !showCreateOption && (
-            <div className="px-3 py-2 text-xs text-custom-primary/60">Sonuç yok</div>
+            <div className="px-3 py-2 text-xs text-on-surface-variant">Sonuç yok</div>
           )}
           {filtered.map((item) => (
             <button
               type="button"
               key={item.id}
               onClick={() => selectItem(item)}
-              className={`w-full text-left px-3 py-2 text-sm hover:bg-custom-primary/10 transition-colors ${
-                String(item.id) === String(value) ? "text-custom-accent" : "text-custom-text"
+              className={`w-full text-left px-3 py-2 rounded-lg text-xs hover:bg-surface-variant/40 transition-colors ${
+                String(item.id) === String(value) ? "text-primary font-medium" : "text-on-surface"
               }`}
             >
               {item.label}
@@ -139,7 +141,7 @@ export default function SearchableCreatableSelect({
               type="button"
               onClick={handleCreateClick}
               disabled={creating}
-              className="w-full text-left px-3 py-2 text-sm text-green-600 hover:bg-custom-primary/10 border-t border-custom-primary/15 transition-colors disabled:opacity-50"
+              className="w-full text-left px-3 py-2 rounded-lg text-xs font-medium text-primary hover:bg-surface-variant/40 transition-colors disabled:opacity-50"
             >
               {creating ? "Oluşturuluyor…" : `+ '${trimmedQuery}' olarak yeni ekle`}
             </button>
@@ -147,7 +149,7 @@ export default function SearchableCreatableSelect({
         </div>
       )}
 
-      {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
+      {error && <p className="text-xs text-error mt-1">{error}</p>}
     </div>
   );
 }

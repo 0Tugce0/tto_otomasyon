@@ -26,6 +26,10 @@ MoneyAmount = Annotated[Decimal, Field(max_digits=12, decimal_places=2)]
 # 2026 sekmesi: "Ödendi" / "Ödenmedi" — "Bekliyor" hiç kullanılmamış.
 PaymentStatus = Literal["Ödendi", "Ödenmedi"]
 
+# Firma → TTO tahsilat durumu — YENİ (Stitch modül 2, "iki aşamalı ödeme akışı" 1. aşaması).
+# 2. aşama (TTO → Akademisyen) zaten var olan PaymentStatus ile temsil edilir.
+FirmCollectionStatus = Literal["Tahsil Edildi", "Tahsil Edilmedi"]
+
 
 # ===========================================================================
 # 1. FIRMS — Firmalar (şartname 5.1)
@@ -33,16 +37,25 @@ PaymentStatus = Literal["Ödendi", "Ödenmedi"]
 
 class FirmCreate(BaseModel):
     name: str = Field(..., min_length=1, description="Firma adı (tekil)")
+    tax_no: Optional[str] = Field(None, description="Vergi No / TCKN")
+    tax_office: Optional[str] = Field(None, description="Vergi Dairesi")
+    contact_email: Optional[str] = Field(None, description="İrtibat kişisi e-postası")
 
 
 class FirmUpdate(BaseModel):
     """Tüm alanlar Optional — kısmi güncelleme desteklenir."""
     name: Optional[str] = Field(None, min_length=1)
+    tax_no: Optional[str] = None
+    tax_office: Optional[str] = None
+    contact_email: Optional[str] = None
 
 
 class FirmResponse(BaseModel):
     id: int
     name: str
+    tax_no: Optional[str] = None
+    tax_office: Optional[str] = None
+    contact_email: Optional[str] = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
@@ -55,7 +68,8 @@ class FirmResponse(BaseModel):
 class AcademicianCreate(BaseModel):
     full_name: str = Field(..., min_length=1, description="Ad soyad (tekil)")
     iban: Optional[str] = Field(None, description="IBAN — 2026'dan itibaren")
-    department: Optional[str] = Field(None, description="Bölüm — ileride eklenebilir")
+    department: Optional[str] = Field(None, description="Bölüm")
+    faculty: Optional[str] = Field(None, description="Fakülte")
 
 
 class AcademicianUpdate(BaseModel):
@@ -63,6 +77,7 @@ class AcademicianUpdate(BaseModel):
     full_name: Optional[str] = Field(None, min_length=1)
     iban: Optional[str] = None
     department: Optional[str] = None
+    faculty: Optional[str] = None
 
 
 class AcademicianResponse(BaseModel):
@@ -70,6 +85,7 @@ class AcademicianResponse(BaseModel):
     full_name: str
     iban: Optional[str] = None
     department: Optional[str] = None
+    faculty: Optional[str] = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
@@ -111,10 +127,11 @@ class PreviewCalculationRequest(BaseModel):
     """POST /api/records/preview-calculation — DB'ye yazmadan hesaplama önizlemesi."""
     year: int = Field(..., ge=2020, description="Kayıt yılı — settings tablosundan oran bulunur")
     invoice_price: MoneyAmount = Field(..., description="Fatura fiyatı")
+    other_funds: MoneyAmount = Field(Decimal("0"), description="Diğer Fon & Harçlar — opsiyonel 6. kesinti")
 
 
 class PreviewCalculationResponse(BaseModel):
-    """Hesaplama zinciri sonuçları (5 adım)."""
+    """Hesaplama zinciri sonuçları (5 adım + opsiyonel 6. adım)."""
     year: int
     invoice_price: MoneyAmount
     invoice_vat: MoneyAmount
@@ -122,6 +139,8 @@ class PreviewCalculationResponse(BaseModel):
     tto_share_amount: MoneyAmount
     amount_after_tto_share: MoneyAmount
     amount_after_withholding: MoneyAmount
+    other_funds: MoneyAmount
+    final_net_payable: MoneyAmount
     # Kullanılan oranlar (frontend'de bilgi amaçlı gösterilebilir)
     rates_used: dict
 
@@ -134,7 +153,7 @@ class WorkRecordCreate(BaseModel):
     """
     year: int = Field(..., ge=2020, description="Kayıt yılı (2025, 2026 ...)")
     firm_id: int = Field(..., description="Firma ID (NOT NULL — B-7)")
-    work_done: str = Field(..., min_length=1, description="Yapılan iş açıklaması")
+    work_done: str = Field(..., min_length=1, max_length=500, description="Yapılan iş açıklaması")
     academician_id: int = Field(..., description="Akademisyen ID (NOT NULL)")
     project_id: Optional[int] = Field(None, description="Proje ID — sadece 2026+")
 
@@ -145,6 +164,10 @@ class WorkRecordCreate(BaseModel):
     tto_share_amount:         Optional[MoneyAmount] = Field(None, description="TTO Payı TL — 2026+")
     amount_after_tto_share:   MoneyAmount = Field(..., description="TTO payı sonrası tutar")
     amount_after_withholding: MoneyAmount = Field(..., description="Stopaj sonrası net (akademisyene)")
+    other_funds:              MoneyAmount = Field(Decimal("0"), description="Diğer Fon & Harçlar — opsiyonel 6. kesinti")
+
+    request_date:            Optional[date] = Field(None, description="Talep Tarihi")
+    firm_collection_status:  Optional[FirmCollectionStatus] = Field(None, description="Firma → TTO tahsilat durumu (1. aşama)")
 
     paid_date:      Optional[date] = Field(None, description="Ödeme tarihi")
     payment_status: PaymentStatus  = Field(..., description="'Ödendi' veya 'Bekliyor'")
@@ -162,7 +185,7 @@ class WorkRecordUpdate(BaseModel):
     """
     year:             Optional[int]          = None
     firm_id:          Optional[int]          = None
-    work_done:        Optional[str]          = Field(None, min_length=1)
+    work_done:        Optional[str]          = Field(None, min_length=1, max_length=500)
     academician_id:   Optional[int]          = None
     project_id:       Optional[int]          = None
 
@@ -172,6 +195,10 @@ class WorkRecordUpdate(BaseModel):
     tto_share_amount:         Optional[MoneyAmount] = None
     amount_after_tto_share:   Optional[MoneyAmount] = None
     amount_after_withholding: Optional[MoneyAmount] = None
+    other_funds:               Optional[MoneyAmount] = None
+
+    request_date:             Optional[date] = None
+    firm_collection_status:   Optional[FirmCollectionStatus] = None
 
     paid_date:      Optional[date]          = None
     payment_status: Optional[PaymentStatus] = None
@@ -203,6 +230,10 @@ class WorkRecordResponse(BaseModel):
     tto_share_amount:         Optional[MoneyAmount] = None
     amount_after_tto_share:   MoneyAmount
     amount_after_withholding: MoneyAmount
+    other_funds:              Optional[MoneyAmount] = None
+
+    request_date:            Optional[date] = None
+    firm_collection_status:  Optional[FirmCollectionStatus] = None
 
     paid_date:      Optional[date] = None
     payment_status: PaymentStatus
@@ -247,6 +278,10 @@ class WorkRecordInAcademicianResponse(BaseModel):
     tto_share_amount:         Optional[MoneyAmount] = None
     amount_after_tto_share:   MoneyAmount
     amount_after_withholding: MoneyAmount
+    other_funds:              Optional[MoneyAmount] = None
+
+    request_date:            Optional[date] = None
+    firm_collection_status:  Optional[FirmCollectionStatus] = None
 
     paid_date:      Optional[date] = None
     payment_status: PaymentStatus
@@ -263,12 +298,20 @@ class WorkRecordInAcademicianResponse(BaseModel):
 class AcademicianSummary(BaseModel):
     """
     Akademisyen detay sayfası — özet istatistikler (şartname madde 7.4).
-    amount_after_withholding üzerinden hesaplanır (akademisyene ödenecek net tutar).
+    total_earned/total_paid/pending_amount artık (amount_after_withholding - other_funds)
+    üzerinden hesaplanır — Stitch modül 4, "Akademisyene Ödenen" gerçek net tutarı yansıtsın diye.
+    other_funds gönderilmemiş kayıtlarda (0 varsayılan) davranış eskisiyle birebir aynıdır.
     """
-    total_earned:   MoneyAmount  # Tüm kayıtların amount_after_withholding toplamı
+    total_earned:   MoneyAmount  # Tüm kayıtların (amount_after_withholding - other_funds) toplamı
     total_paid:     MoneyAmount  # "Ödendi" statüsündeki kayıtların toplamı
-    pending_amount: MoneyAmount  # "Bekliyor" kayıtların toplamı
-    pending_count:  int          # "Bekliyor" kayıt sayısı
+    pending_amount: MoneyAmount  # "Ödenmedi" kayıtların toplamı
+    pending_count:  int          # "Ödenmedi" kayıt sayısı
+
+    # YENİ (Stitch modül 4 — Akademisyen Portföy Paneli):
+    total_invoice_price:    MoneyAmount  # Toplam iş hacmi (KDV hariç fatura toplamı)
+    total_collected:        MoneyAmount  # firm_collection_status="Tahsil Edildi" olan kayıtların fatura toplamı
+    collected_pending_amount: MoneyAmount  # Tahsilat yapılmış AMA akademisyene henüz ödenmemiş toplam (uyarı bandı)
+    collected_pending_count:  int          # Aynısının kayıt sayısı
 
 
 class AcademicianDetailResponse(BaseModel):
@@ -282,6 +325,7 @@ class AcademicianDetailResponse(BaseModel):
     full_name:  str
     iban:       Optional[str] = None
     department: Optional[str] = None
+    faculty:    Optional[str] = None
     created_at: datetime
 
     work_records: list[WorkRecordInAcademicianResponse]
@@ -328,6 +372,7 @@ class SettingResponse(BaseModel):
 
 class UserCreate(BaseModel):
     username:  str = Field(..., min_length=2, description="Kullanıcı adı (tekil)")
+    email:     Optional[str] = Field(None, description="Opsiyonel — girişte kullanıcı adı yerine de kullanılabilir")
     password:  str = Field(..., min_length=6, description="Düz metin şifre — backend bcrypt ile hash'ler")
     full_name: str = Field(..., min_length=1)
 
@@ -335,6 +380,7 @@ class UserCreate(BaseModel):
 class UserUpdate(BaseModel):
     """Tüm alanlar Optional — kısmi güncelleme desteklenir."""
     username:  Optional[str] = Field(None, min_length=2)
+    email:     Optional[str] = None
     password:  Optional[str] = Field(None, min_length=6)
     full_name: Optional[str] = Field(None, min_length=1)
 
@@ -343,6 +389,7 @@ class UserResponse(BaseModel):
     """password_hash asla response'a dahil edilmez."""
     id:         int
     username:   str
+    email:      Optional[str] = None
     full_name:  str
     created_at: datetime
 
@@ -354,8 +401,9 @@ class UserResponse(BaseModel):
 # ===========================================================================
 
 class LoginRequest(BaseModel):
-    username: str
+    identifier: str = Field(..., description="Kullanıcı adı veya e-posta")
     password: str
+    remember_me: bool = Field(False, description="İşaretliyse oturum süresi uzatılır (SESSION_REMEMBER_ME_DAYS)")
 
 
 class LoginResponse(BaseModel):

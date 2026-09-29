@@ -5,17 +5,65 @@
  * v3'ten farkı: @tailwind base/components/utilities YOK,
  * tailwind.config.js YOK — @tailwindcss/vite plugin otomatik halleder.
  *
- * Marka renkleri @theme bloğunda tanımlı — bg-custom-*, text-custom-*,
- * border-custom-* vb. utility class'lar buradan otomatik üretilir.
+ * Marka renkleri @theme bloğunda tanımlı — bg-primary, text-on-surface,
+ * border-outline vb. utility class'lar buradan otomatik üretilir.
+ *
+ * Stitch tasarım sistemi (Material Design 3 token adlandırması) — 6
+ * modülün tamamı (Giriş, Yeni Kayıt, İş Kayıtları, Akademisyen/Firma
+ * Detay, Ayarlar) bu palete taşındı. Önceki oturumun custom-* paleti
+ * (custom-bg/text/primary/secondary/accent) artık hiçbir sayfada
+ * kullanılmıyor, kaldırıldı.
  */
 @import "tailwindcss";
 
 @theme {
-  --color-custom-text: #0d0e14;
-  --color-custom-bg: #f9f9fb;
-  --color-custom-primary: #69719c;
-  --color-custom-secondary: #caafc8;
-  --color-custom-accent: #af869c;
+  --color-surface-bright: #edeef4;
+  --color-tertiary-container: #a78bfa;
+  --color-surface-variant: #dcdee4;
+  --color-secondary-fixed-dim: #b8baca;
+  --color-surface-container-high: #dcdee4;
+  --color-surface-container-lowest: #f0f2f8;
+  --color-secondary-container: #d8dae6;
+  --color-surface-container: #e2e4ea;
+  --color-on-tertiary-fixed: #2e1065;
+  --color-background: #e8eaf0;
+  --color-on-surface-variant: #585a68;
+  --color-primary: #6366f1;
+  --color-surface-container-highest: #d6d8de;
+  --color-outline-variant: #d0d2dc;
+  --color-on-surface: #2e3040;
+  --color-inverse-on-surface: #e8eaf0;
+  --color-tertiary: #7c3aed;
+  --color-on-tertiary-container: #3b1f63;
+  --color-on-tertiary-fixed-variant: #5b21b6;
+  --color-on-tertiary: #ffffff;
+  --color-on-error-container: #991b1b;
+  --color-secondary: #6c6e7e;
+  --color-secondary-fixed: #d8dae6;
+  --color-tertiary-fixed-dim: #c4b5fd;
+  --color-on-primary-container: #e0e2ff;
+  --color-primary-container: #818cf8;
+  --color-error-container: #fee2e2;
+  --color-tertiary-fixed: #ede9fe;
+  --color-on-primary-fixed: #1e1b4b;
+  --color-on-secondary-container: #585a68;
+  --color-on-secondary-fixed: #1a1b26;
+  --color-inverse-primary: #a5b4fc;
+  --color-on-error: #ffffff;
+  --color-inverse-surface: #2e3040;
+  --color-on-primary-fixed-variant: #4338ca;
+  --color-primary-fixed: #e0e2ff;
+  --color-on-primary: #ffffff;
+  --color-on-secondary: #ffffff;
+  --color-on-secondary-fixed-variant: #404252;
+  --color-surface-dim: #d4d6dc;
+  --color-error: #dc2626;
+  --color-outline: #8a8c9a;
+  --color-primary-fixed-dim: #a5b4fc;
+  --color-surface-tint: #6366f1;
+  --color-surface-container-low: #e5e7ed;
+  --color-surface: #e8eaf0;
+  --color-on-background: #2e3040;
 }
 
 /* ── Toast animasyonu ── */
@@ -29,6 +77,6 @@
 
 /* ── Scrollbar (WebKit) ── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: var(--color-custom-bg); }
-::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--color-custom-primary) 45%, transparent); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--color-custom-primary) 65%, transparent); }
+::-webkit-scrollbar-track { background: var(--color-surface); }
+::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--color-primary) 45%, transparent); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--color-primary) 65%, transparent); }

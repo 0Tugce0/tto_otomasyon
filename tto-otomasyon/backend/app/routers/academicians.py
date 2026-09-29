@@ -60,6 +60,7 @@ def create_academician(
         full_name=body.full_name.strip(),
         iban=body.iban,
         department=body.department,
+        faculty=body.faculty,
         created_at=datetime.now(timezone.utc),
     )
     db.add(acad)
@@ -147,32 +148,44 @@ def get_academician_detail(
         raise HTTPException(status_code=404, detail="Akademisyen bulunamadı.")
 
     # ── Özet: DB seviyesinde SUM() ────────────────────────────────────────
+    # "net" = amount_after_withholding - other_funds (other_funds NULL/0 ise eski davranışla aynı)
+    net_expr = WorkRecord.amount_after_withholding - func.coalesce(WorkRecord.other_funds, 0)
     summary_row = db.query(
-        func.coalesce(func.sum(WorkRecord.amount_after_withholding), 0).label("total_earned"),
+        func.coalesce(func.sum(net_expr), 0).label("total_earned"),
         func.coalesce(
-            func.sum(
-                case(
-                    (WorkRecord.payment_status == "Ödendi", WorkRecord.amount_after_withholding),
-                    else_=0,
-                )
-            ),
-            0,
+            func.sum(case((WorkRecord.payment_status == "Ödendi", net_expr), else_=0)), 0
         ).label("total_paid"),
         func.coalesce(
+            func.sum(case((WorkRecord.payment_status == "Ödenmedi", net_expr), else_=0)), 0
+        ).label("pending_amount"),
+        func.count(
+            case((WorkRecord.payment_status == "Ödenmedi", 1), else_=None)
+        ).label("pending_count"),
+        func.coalesce(func.sum(WorkRecord.invoice_price), 0).label("total_invoice_price"),
+        func.coalesce(
+            func.sum(case((WorkRecord.firm_collection_status == "Tahsil Edildi", WorkRecord.invoice_price), else_=0)), 0
+        ).label("total_collected"),
+        func.coalesce(
             func.sum(
                 case(
-                    (WorkRecord.payment_status == "Ödenmedi", WorkRecord.amount_after_withholding),
+                    (
+                        (WorkRecord.firm_collection_status == "Tahsil Edildi") & (WorkRecord.payment_status == "Ödenmedi"),
+                        net_expr,
+                    ),
                     else_=0,
                 )
             ),
             0,
-        ).label("pending_amount"),
+        ).label("collected_pending_amount"),
         func.count(
             case(
-                (WorkRecord.payment_status == "Ödenmedi", 1),
+                (
+                    (WorkRecord.firm_collection_status == "Tahsil Edildi") & (WorkRecord.payment_status == "Ödenmedi"),
+                    1,
+                ),
                 else_=None,
             )
-        ).label("pending_count"),
+        ).label("collected_pending_count"),
     ).filter(WorkRecord.academician_id == academician_id).one()
 
     summary = AcademicianSummary(
@@ -180,6 +193,10 @@ def get_academician_detail(
         total_paid=Decimal(str(summary_row.total_paid)),
         pending_amount=Decimal(str(summary_row.pending_amount)),
         pending_count=summary_row.pending_count,
+        total_invoice_price=Decimal(str(summary_row.total_invoice_price)),
+        total_collected=Decimal(str(summary_row.total_collected)),
+        collected_pending_amount=Decimal(str(summary_row.collected_pending_amount)),
+        collected_pending_count=summary_row.collected_pending_count,
     )
 
     # ── Work records: firm + project nested ───────────────────────────────
@@ -214,6 +231,9 @@ def get_academician_detail(
             tto_share_amount=wr.tto_share_amount,
             amount_after_tto_share=wr.amount_after_tto_share,
             amount_after_withholding=wr.amount_after_withholding,
+            other_funds=wr.other_funds,
+            request_date=wr.request_date,
+            firm_collection_status=wr.firm_collection_status,
             payment_status=wr.payment_status,
             paid_date=wr.paid_date,
             iban_snapshot=wr.iban_snapshot,
@@ -229,6 +249,7 @@ def get_academician_detail(
         full_name=acad.full_name,
         iban=acad.iban,
         department=acad.department,
+        faculty=acad.faculty,
         created_at=acad.created_at,
         work_records=work_records,
         summary=summary,

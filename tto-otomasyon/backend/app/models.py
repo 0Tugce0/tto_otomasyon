@@ -49,9 +49,12 @@ from app.database import Base
 class Firm(Base):
     __tablename__ = "firms"
 
-    id         = Column(Integer, primary_key=True, index=True)
-    name       = Column(String(collation="NOCASE"), nullable=False, unique=True)   # Firma adı, tekil (case-insensitive)
-    created_at = Column(DateTime, nullable=False, default=func.now())
+    id            = Column(Integer, primary_key=True, index=True)
+    name          = Column(String(collation="NOCASE"), nullable=False, unique=True)   # Firma adı, tekil (case-insensitive)
+    tax_no        = Column(String, nullable=True)   # Vergi No / TCKN — Stitch modül 2 "Hızlı Firma Ekle"
+    tax_office    = Column(String, nullable=True)   # Vergi Dairesi
+    contact_email = Column(String, nullable=True)   # İrtibat kişisi e-postası
+    created_at    = Column(DateTime, nullable=False, default=func.now())
 
     # İlişki
     work_records = relationship("WorkRecord", back_populates="firm")
@@ -66,7 +69,8 @@ class Academician(Base):
     id          = Column(Integer, primary_key=True, index=True)
     full_name   = Column(String(collation="NOCASE"), nullable=False, unique=True)   # Ad soyad, tekil (case-insensitive)
     iban        = Column(String, nullable=True)                  # 2026'dan itibaren
-    department  = Column(String, nullable=True)                  # İleride eklenebilir
+    department  = Column(String, nullable=True)                  # Bölüm
+    faculty     = Column(String, nullable=True)                  # Fakülte — Stitch modül 2
     created_at  = Column(DateTime, nullable=False, default=func.now())
 
     # İlişki
@@ -137,6 +141,15 @@ class WorkRecord(Base):
     amount_after_tto_share    = Column(Numeric(12, 2), nullable=False)  # TTO payı sonrası tutar
     amount_after_withholding  = Column(Numeric(12, 2), nullable=False)  # Stopaj sonrası net (akademisyene)
 
+    # --- Diğer Fon & Harçlar — Stitch modül 2, opsiyonel 6. kesinti (bkz. core/calculations.py) ---
+    other_funds      = Column(Numeric(12, 2), nullable=True)          # Varsayılan 0 (API katmanında)
+
+    # --- İki aşamalı ödeme durumu — Stitch modül 2 ---
+    # Aşama 1 (YENİ): Firma → TTO tahsilatı. Aşama 2: mevcut payment_status (TTO → Akademisyen).
+    firm_collection_status = Column(String, nullable=True)            # "Tahsil Edildi" / "Tahsil Edilmedi"
+
+    request_date     = Column(Date, nullable=True)                    # Talep Tarihi — Stitch modül 2
+
     # --- Ödeme bilgileri ---
     paid_date        = Column(Date, nullable=True)                   # Hocaya ödenen tarih
     payment_status   = Column(String, nullable=False)                # "Ödendi" / "Bekliyor" (validation API katmanında)
@@ -182,6 +195,7 @@ class User(Base):
 
     id            = Column(Integer, primary_key=True, index=True)
     username      = Column(String, nullable=False, unique=True)
+    email         = Column(String(collation="NOCASE"), nullable=True, unique=True)  # giriş için opsiyonel, case-insensitive
     password_hash = Column(String, nullable=False)  # bcrypt hash (passlib yok, bcrypt.hashpw)
     full_name     = Column(String, nullable=False)
     created_at    = Column(DateTime, nullable=False, default=func.now())

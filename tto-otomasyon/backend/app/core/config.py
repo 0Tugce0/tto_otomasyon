@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     # .env'de SESSION_MAX_AGE_HOURS=24 gibi override edilebilir.
     SESSION_MAX_AGE_HOURS: int = 8
 
+    # "Beni Hatırla" işaretlenince kullanılan uzun oturum süresi — gün cinsinden.
+    SESSION_REMEMBER_ME_DAYS: int = 30
+
     model_config = SettingsConfigDict(
         env_file=".env",          # backend/ dizinindeki .env dosyası
         env_file_encoding="utf-8",

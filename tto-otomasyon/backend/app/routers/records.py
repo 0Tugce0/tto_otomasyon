@@ -1,7 +1,9 @@
 """
 routers/records.py — work_records CRUD.
 
-GET /                        — filtrelenebilir + sayfalı liste
+GET /                        — filtrelenebilir + sayfalı liste (+ arama)
+GET /summary                 — filtrelenmiş kayıtların toplamları (İş Kayıtları modülü özet kartları)
+GET /export                  — filtrelenmiş kayıtları .xlsx olarak indirir
 POST /preview-calculation    — DB'ye yazmadan hesaplama önizlemesi
 POST /                       — yeni kayıt (sira_no otomatik — B-5)
 GET  /{id}                   — tek kayıt detayı
@@ -11,11 +13,15 @@ DELETE /{id}                 — kaydı kalıcı olarak siler (hard delete, geri
 Şartname 7.2 / 7.3.
 """
 
+from io import BytesIO
 from typing import Optional
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import func
+from fastapi.responses import StreamingResponse
+from openpyxl import Workbook
+from openpyxl.utils import get_column_letter
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from app.auth import get_current_user
@@ -30,6 +36,41 @@ from app.schemas import (
 )
 
 router = APIRouter()
+
+
+# ---------------------------------------------------------------------------
+# Yardımcı: Liste / özet / export için ortak filtre uygulayıcı
+# ---------------------------------------------------------------------------
+def _apply_filters(
+    q,
+    year: Optional[int],
+    firm_id: Optional[int],
+    academician_id: Optional[int],
+    payment_status: Optional[str],
+    search: Optional[str],
+):
+    if year is not None:
+        q = q.filter(WorkRecord.year == year)
+    if firm_id is not None:
+        q = q.filter(WorkRecord.firm_id == firm_id)
+    if academician_id is not None:
+        q = q.filter(WorkRecord.academician_id == academician_id)
+    if payment_status is not None:
+        q = q.filter(WorkRecord.payment_status == payment_status)
+    if search:
+        s = f"%{search.strip().lower()}%"
+        q = (
+            q.join(Firm, WorkRecord.firm_id == Firm.id)
+            .join(Academician, WorkRecord.academician_id == Academician.id)
+            .filter(
+                or_(
+                    func.lower(WorkRecord.work_done).like(s),
+                    Firm.name.like(f"%{search.strip()}%"),  # firms.name COLLATE NOCASE
+                    Academician.full_name.like(f"%{search.strip()}%"),  # COLLATE NOCASE
+                )
+            )
+        )
+    return q
 
 
 # ---------------------------------------------------------------------------
@@ -51,6 +92,7 @@ def _enrich(wr: WorkRecord, db: Session) -> dict:
             "full_name": acad.full_name,
             "iban": acad.iban,
             "department": acad.department,
+            "faculty": acad.faculty,
             "created_at": acad.created_at,
         } if acad else None,
         "project_id": wr.project_id,
@@ -62,6 +104,10 @@ def _enrich(wr: WorkRecord, db: Session) -> dict:
         "tto_share_amount": str(wr.tto_share_amount) if wr.tto_share_amount is not None else None,
         "amount_after_tto_share": str(wr.amount_after_tto_share),
         "amount_after_withholding": str(wr.amount_after_withholding),
+        "other_funds": str(wr.other_funds) if wr.other_funds is not None else "0.00",
+        "final_net_payable": str(wr.amount_after_withholding - (wr.other_funds or 0)),
+        "request_date": wr.request_date,
+        "firm_collection_status": wr.firm_collection_status,
         "payment_status": wr.payment_status,
         "paid_date": wr.paid_date,
         "iban_snapshot": wr.iban_snapshot,
@@ -75,12 +121,14 @@ def _enrich(wr: WorkRecord, db: Session) -> dict:
 # ---------------------------------------------------------------------------
 # GET / — Sayfalı + filtrelenebilir liste
 # ---------------------------------------------------------------------------
-@router.get("/", summary="İş kaydı listesi (filtrelenebilir, sayfalı)")
+@router.get("/", summary="İş kaydı listesi (filtrelenebilir, sayfalı, aranabilir)")
 def list_records(
     year: Optional[int] = Query(None, description="Yıl filtresi"),
     firm_id: Optional[int] = Query(None, description="Firma ID filtresi"),
     academician_id: Optional[int] = Query(None, description="Akademisyen ID filtresi"),
     payment_status: Optional[str] = Query(None, description="Ödendi / Ödenmedi"),
+    search: Optional[str] = Query(None, description="Yapılan iş, firma adı veya akademisyen adında arar"),
+    order: str = Query("desc", pattern="^(asc|desc)$", description="Tarihe göre sıralama yönü"),
     page: int = Query(1, ge=1, description="Sayfa numarası (1'den başlar)"),
     page_size: int = Query(25, ge=1, le=200, description="Sayfa başı kayıt (max 200)"),
     db: Session = Depends(get_db),
@@ -90,21 +138,15 @@ def list_records(
     Sayfa bazlı kayıt listesi.
     Dönen body: { total, page, page_size, pages, items: [...] }
     """
-    q = db.query(WorkRecord)
-    if year is not None:
-        q = q.filter(WorkRecord.year == year)
-    if firm_id is not None:
-        q = q.filter(WorkRecord.firm_id == firm_id)
-    if academician_id is not None:
-        q = q.filter(WorkRecord.academician_id == academician_id)
-    if payment_status is not None:
-        q = q.filter(WorkRecord.payment_status == payment_status)
+    q = _apply_filters(db.query(WorkRecord), year, firm_id, academician_id, payment_status, search)
 
     total = q.count()
     pages = max(1, (total + page_size - 1) // page_size)
 
+    year_order = WorkRecord.year.asc() if order == "asc" else WorkRecord.year.desc()
+    sira_order = WorkRecord.sira_no.asc() if order == "asc" else WorkRecord.sira_no.desc()
     records = (
-        q.order_by(WorkRecord.year.desc(), WorkRecord.sira_no)
+        q.order_by(year_order, sira_order)
         .offset((page - 1) * page_size)
         .limit(page_size)
         .all()
@@ -117,6 +159,128 @@ def list_records(
         "pages": pages,
         "items": [_enrich(r, db) for r in records],
     }
+
+
+# ---------------------------------------------------------------------------
+# GET /summary — Filtrelenmiş kayıtların toplamları (İş Kayıtları modülü özet kartları)
+# ÖNEMLİ: /{record_id}'den ÖNCE tanımlı olmalı, yoksa "summary" bir record_id
+# olarak yorumlanır (FastAPI route'ları sırayla eşleştirir).
+# ---------------------------------------------------------------------------
+@router.get("/summary", summary="Filtrelenmiş kayıtların toplam tutarları")
+def get_summary(
+    year: Optional[int] = Query(None),
+    firm_id: Optional[int] = Query(None),
+    academician_id: Optional[int] = Query(None),
+    payment_status: Optional[str] = Query(None),
+    search: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Aynı filtrelerle (list_records ile birebir) eşleşen kayıtların toplamlarını
+    döner. Sayfalamadan bağımsız — filtreye uyan TÜM kayıtları toplar.
+
+    Dönen alanlar:
+      count                    — kayıt sayısı
+      total_invoice_price      — toplam fatura tutarı (KDV hariç)
+      total_invoice_with_vat   — toplam KDV dahil fatura
+      total_tto_share_amount   — toplam TTO payı
+      total_stopaj              — toplam stopaj kesintisi (amount_after_tto_share - amount_after_withholding)
+      total_withholding_tax     — toplam tevkifat (KDV × invoice_withholding_rate)
+    """
+    q = _apply_filters(db.query(WorkRecord), year, firm_id, academician_id, payment_status, search)
+
+    row = q.with_entities(
+        func.count(WorkRecord.id),
+        func.coalesce(func.sum(WorkRecord.invoice_price), 0),
+        func.coalesce(func.sum(WorkRecord.invoice_price + WorkRecord.invoice_vat), 0),
+        func.coalesce(func.sum(WorkRecord.tto_share_amount), 0),
+        func.coalesce(func.sum(WorkRecord.amount_after_tto_share - WorkRecord.amount_after_withholding), 0),
+        func.coalesce(func.sum(WorkRecord.withholding_tax), 0),
+    ).one()
+
+    count, total_invoice_price, total_invoice_with_vat, total_tto_share_amount, total_stopaj, total_withholding_tax = row
+
+    return {
+        "count": count,
+        "total_invoice_price": str(total_invoice_price),
+        "total_invoice_with_vat": str(total_invoice_with_vat),
+        "total_tto_share_amount": str(total_tto_share_amount),
+        "total_stopaj": str(total_stopaj),
+        "total_withholding_tax": str(total_withholding_tax),
+    }
+
+
+# ---------------------------------------------------------------------------
+# GET /export — Filtrelenmiş kayıtları .xlsx olarak indirir
+# ÖNEMLİ: /{record_id}'den ÖNCE tanımlı olmalı (bkz. yukarıdaki not).
+# ---------------------------------------------------------------------------
+@router.get("/export", summary="Filtrelenmiş kayıtları Excel (.xlsx) olarak indir")
+def export_records(
+    year: Optional[int] = Query(None),
+    firm_id: Optional[int] = Query(None),
+    academician_id: Optional[int] = Query(None),
+    payment_status: Optional[str] = Query(None),
+    search: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    q = _apply_filters(db.query(WorkRecord), year, firm_id, academician_id, payment_status, search)
+    records = q.order_by(WorkRecord.year.desc(), WorkRecord.sira_no).all()
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "İş Kayıtları"
+
+    headers = [
+        "Yıl", "Sıra No", "Firma", "Akademisyen", "Proje", "Yapılan İş",
+        "Fatura Tutarı", "KDV", "KDV Dahil Fatura", "Tevkifat",
+        "TTO Payı", "TTO Payı Sonrası", "Stopaj Sonrası (Akademisyene Net)",
+        "Diğer Fon & Harçlar", "Nihai Net Ödeme",
+        "Firma Tahsilat Durumu", "Ödeme Durumu", "Talep Tarihi", "Ödeme Tarihi", "Notlar",
+    ]
+    ws.append(headers)
+
+    for wr in records:
+        firm = db.query(Firm).filter(Firm.id == wr.firm_id).first()
+        acad = db.query(Academician).filter(Academician.id == wr.academician_id).first()
+        proj = db.query(Project).filter(Project.id == wr.project_id).first() if wr.project_id else None
+        other_funds = wr.other_funds or 0
+        ws.append([
+            wr.year, wr.sira_no,
+            firm.name if firm else "",
+            acad.full_name if acad else "",
+            proj.name if proj else "",
+            wr.work_done,
+            float(wr.invoice_price), float(wr.invoice_vat),
+            float(wr.invoice_price + wr.invoice_vat), float(wr.withholding_tax),
+            float(wr.tto_share_amount) if wr.tto_share_amount is not None else None,
+            float(wr.amount_after_tto_share), float(wr.amount_after_withholding),
+            float(other_funds), float(wr.amount_after_withholding - other_funds),
+            wr.firm_collection_status or "",
+            wr.payment_status,
+            wr.request_date.isoformat() if wr.request_date else "",
+            wr.paid_date.isoformat() if wr.paid_date else "",
+            wr.notes or "",
+        ])
+
+    for col_idx in range(1, len(headers) + 1):
+        ws.column_dimensions[get_column_letter(col_idx)].width = 18
+
+    buffer = BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+
+    filename = "is_kayitlari"
+    if year:
+        filename += f"_{year}"
+    filename += ".xlsx"
+
+    return StreamingResponse(
+        buffer,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -151,6 +315,7 @@ def preview_calculation(
         withholding_rate=setting.withholding_rate,
         vat_rate=setting.vat_rate,
         invoice_withholding_rate=setting.invoice_withholding_rate,
+        other_funds=body.other_funds,
     )
 
     return PreviewCalculationResponse(
@@ -161,6 +326,8 @@ def preview_calculation(
         tto_share_amount=calc["tto_share_amount"],
         amount_after_tto_share=calc["amount_after_tto_share"],
         amount_after_withholding=calc["amount_after_withholding"],
+        other_funds=calc["other_funds"],
+        final_net_payable=calc["final_net_payable"],
         rates_used={
             "tto_share_rate": str(setting.tto_share_rate),
             "withholding_rate": str(setting.withholding_rate),
@@ -206,6 +373,9 @@ def create_record(
         tto_share_amount=body.tto_share_amount,
         amount_after_tto_share=body.amount_after_tto_share,
         amount_after_withholding=body.amount_after_withholding,
+        other_funds=body.other_funds,
+        request_date=body.request_date,
+        firm_collection_status=body.firm_collection_status,
         payment_status=body.payment_status,
         paid_date=body.paid_date,
         iban_snapshot=body.iban_snapshot,

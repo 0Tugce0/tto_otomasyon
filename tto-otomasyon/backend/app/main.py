@@ -29,9 +29,9 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
-from starlette.middleware.sessions import SessionMiddleware
 
 from app.core.config import settings
+from app.core.session import RememberableSessionMiddleware
 from app.routers import academicians, firms, projects, records
 from app.routers import settings as settings_router
 from app.routers import auth as auth_router
@@ -67,14 +67,15 @@ app = FastAPI(
 # Middleware'ler — SIRA ÖNEMLİ (önce eklenen en dışta çalışır)
 # ---------------------------------------------------------------------------
 
-# 1. Session middleware — HttpOnly imzalı cookie
+# 1. Session middleware — HttpOnly imzalı cookie ("Beni Hatırla" destekli — core/session.py)
 app.add_middleware(
-    SessionMiddleware,
+    RememberableSessionMiddleware,
     secret_key=settings.SECRET_KEY,
     session_cookie="tto_session",
     https_only=False,   # LAN'da HTTP kullanılıyor (şartname madde 2)
     same_site="lax",
     max_age=settings.SESSION_MAX_AGE_HOURS * 3600,  # saniye (varsayılan: 8 saat)
+    remember_max_age=settings.SESSION_REMEMBER_ME_DAYS * 24 * 3600,  # "Beni Hatırla" işaretliyse
 )
 
 # 2. CORS — SADECE development modunda (DEBUG=True).
