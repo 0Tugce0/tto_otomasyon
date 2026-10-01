@@ -26,10 +26,17 @@ build/
 # ---------------------------------------------------------------------------
 # Veritabanı — SQLite + WAL modu yan dosyaları
 # WAL modu aktif olduğunda SQLite 3 dosya üretir: .db, .db-wal, .db-shm
+#
+# ÖNEMLİ: migration öncesi alınan zaman damgalı yedekler de buraya girer
+# (tto_pre_*_migration_*.db gibi) — gerçek isim/IBAN içerdikleri için
+# KESİNLİKLE git'e eklenmemeli. Önceki dar kural (sadece "tto.db" adını
+# hariç tutan) bu yedekleri kaçırmıştı ve 3 tanesi yanlışlıkla public
+# repoya push edildi (bkz. 2026-10-01 olayı) — bu yüzden artık backend/data/
+# altındaki TÜM .db dosyaları genel bir kuralla hariç tutuluyor.
 # ---------------------------------------------------------------------------
-backend/data/tto.db
-backend/data/tto.db-wal
-backend/data/tto.db-shm
+backend/data/*.db
+backend/data/*.db-wal
+backend/data/*.db-shm
 
 # Kaynak Excel dosyaları — gerçek isim/IBAN/firma verisi içeriyor
 # KESİNLİKLE git'e eklenmemeli
